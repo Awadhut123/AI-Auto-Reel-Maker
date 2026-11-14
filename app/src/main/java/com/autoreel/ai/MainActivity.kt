@@ -1,9 +1,14 @@
 
 package com.autoreel.ai
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -11,11 +16,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +54,36 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AutoReelHomeScreen() {
+
+    val context = LocalContext.current
+
+    var showVideoOptions by remember { mutableStateOf(false) }
+    var selectedVideoUri by remember {
+        mutableStateOf<android.net.Uri?>(null)
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            selectedVideoUri = uri
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = result.data?.data
+
+            if (uri != null) {
+                selectedVideoUri = uri
+            } else {
+                selectedVideoUri = null
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -55,6 +91,7 @@ fun AutoReelHomeScreen() {
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -67,6 +104,7 @@ fun AutoReelHomeScreen() {
                     fontSize = 25.sp,
                     fontWeight = FontWeight.Bold
                 )
+
                 Text(
                     text = "Create amazing reels with AI",
                     color = Color.LightGray,
@@ -106,6 +144,7 @@ fun AutoReelHomeScreen() {
                     fontSize = 25.sp,
                     fontWeight = FontWeight.Bold
                 )
+
                 Text(
                     text = "YOUR NEXT REEL ✨",
                     color = LightPurple,
@@ -124,7 +163,9 @@ fun AutoReelHomeScreen() {
                 Spacer(modifier = Modifier.height(22.dp))
 
                 Button(
-                    onClick = { },
+                    onClick = {
+                        showVideoOptions = true
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
@@ -142,7 +183,47 @@ fun AutoReelHomeScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
+
+        if (selectedVideoUri != null) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = CardBackground,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Purple)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "✓ Video Selected",
+                        color = LightPurple,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Your video is ready for the next step.",
+                        color = Color.LightGray,
+                        fontSize = 13.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            showVideoOptions = true
+                        }
+                    ) {
+                        Text("Choose Another Video")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+        }
 
         Text(
             text = "Choose a Style",
@@ -193,12 +274,15 @@ fun AutoReelHomeScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(text = "🎥", fontSize = 32.sp)
+
                 Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
                     text = "No reels created yet",
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold
                 )
+
                 Text(
                     text = "Your finished videos will appear here.",
                     color = Color.LightGray,
@@ -217,6 +301,87 @@ fun AutoReelHomeScreen() {
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+    }
+
+    if (showVideoOptions) {
+        AlertDialog(
+            onDismissRequest = {
+                showVideoOptions = false
+            },
+            containerColor = CardBackground,
+            title = {
+                Text(
+                    text = "Create New Reel",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Choose how you want to add your video.",
+                        color = Color.LightGray
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            showVideoOptions = false
+
+                            galleryLauncher.launch(
+                                ActivityResultContracts.PickVisualMedia.VideoOnly
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Purple
+                        )
+                    ) {
+                        Text("📁  Choose from Gallery")
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            showVideoOptions = false
+
+                            val cameraIntent = Intent(
+                                MediaStore.ACTION_VIDEO_CAPTURE
+                            ).apply {
+                                putExtra(
+                                    MediaStore.EXTRA_DURATION_LIMIT,
+                                    60
+                                )
+                            }
+
+                            if (cameraIntent.resolveActivity(
+                                    context.packageManager
+                                ) != null
+                            ) {
+                                cameraLauncher.launch(cameraIntent)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "📷  Record Video",
+                            color = LightPurple
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showVideoOptions = false
+                    }
+                ) {
+                    Text("Cancel", color = LightPurple)
+                }
+            }
+        )
     }
 }
 
@@ -240,7 +405,9 @@ fun TemplateCard(
             verticalArrangement = Arrangement.Center
         ) {
             Text(text = emoji, fontSize = 27.sp)
+
             Spacer(modifier = Modifier.height(7.dp))
+
             Text(
                 text = title,
                 color = Color.White,
