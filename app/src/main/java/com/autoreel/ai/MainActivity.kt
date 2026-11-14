@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.result.PickVisualMediaRequest
 
 private val DarkBackground = Color(0xFF101018)
 private val CardBackground = Color(0xFF1D1D2B)
