@@ -31,6 +31,12 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
 import android.content.ContentResolver
+import android.provider.OpenableColumns
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import java.io.File
 
 private fun isValidVideoFile(
     context: Context,
@@ -51,6 +57,114 @@ private fun isValidVideoFile(
 
     return true
 }
+
+
+private suspend fun importVideoToCache(
+    context: Context,
+    uri: Uri,
+    onProgress: (Int) -> Unit
+): File? {
+
+    return withContext(Dispatchers.IO) {
+
+        var destinationFile: File? = null
+
+        try {
+            var fileName = "autoreel_video"
+            var totalBytes = -1L
+
+            context.contentResolver.query(
+                uri,
+                arrayOf(
+                    OpenableColumns.DISPLAY_NAME,
+                    OpenableColumns.SIZE
+                ),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+
+                if (cursor.moveToFirst()) {
+
+                    val nameIndex = cursor.getColumnIndex(
+                        OpenableColumns.DISPLAY_NAME
+                    )
+
+                    if (nameIndex >= 0) {
+                        fileName = cursor.getString(nameIndex)
+                            ?: "autoreel_video"
+                    }
+
+                    val sizeIndex = cursor.getColumnIndex(
+                        OpenableColumns.SIZE
+                    )
+
+                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) {
+                        totalBytes = cursor.getLong(sizeIndex)
+                    }
+                }
+            }
+
+            val extension = fileName
+                .substringAfterLast('.', "mp4")
+                .filter { it.isLetterOrDigit() }
+                .ifBlank { "mp4" }
+
+            val outputFile = File(
+                context.cacheDir,
+                "autoreel_${System.currentTimeMillis()}.$extension"
+            )
+
+            destinationFile = outputFile
+
+            val inputStream =
+                context.contentResolver.openInputStream(uri)
+                    ?: return@withContext null
+
+            inputStream.use { input ->
+
+                outputFile.outputStream().use { output ->
+
+                    val buffer = ByteArray(64 * 1024)
+                    var copiedBytes = 0L
+
+                    while (true) {
+
+                        val bytesRead = input.read(buffer)
+
+                        if (bytesRead == -1) break
+
+                        output.write(buffer, 0, bytesRead)
+                        copiedBytes += bytesRead
+
+                        if (totalBytes > 0) {
+
+                            val progress = (
+                                copiedBytes * 100 / totalBytes
+                            ).toInt().coerceIn(0, 99)
+
+                            withContext(Dispatchers.Main) {
+                                onProgress(progress)
+                            }
+                        }
+                    }
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                onProgress(100)
+            }
+
+            outputFile
+
+        } catch (e: Exception) {
+
+            destinationFile?.delete()
+            null
+        }
+    }
+}
+
 
 private fun isVideoWithinOneMinute(
     context: Context,
@@ -135,6 +249,62 @@ fun AutoReelHomeScreen() {
 
     val context = LocalContext.current
 
+  val coroutineScope = rememberCoroutineScope()
+
+var isImporting by remember {
+    mutableStateOf(false)
+}
+
+var importProgress by remember {
+    mutableIntStateOf(0)
+}
+
+var importedVideoFile by remember {
+    mutableStateOf<File?>(null)
+}
+fun startVideoImport(uri: Uri) {
+
+    coroutineScope.launch {
+
+        isImporting = true
+        importProgress = 0
+        importedVideoFile = null
+        selectedVideoUri = null
+
+        val file = importVideoToCache(
+            context,
+            uri
+        ) { progress ->
+
+            importProgress = progress
+        }
+
+        isImporting = false
+
+        if (file != null) {
+
+            importedVideoFile = file
+            selectedVideoUri = uri
+
+            Toast.makeText(
+                context,
+                "Video imported successfully!",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } else {
+
+            selectedVideoUri = null
+
+            Toast.makeText(
+                context,
+                "Video import failed. Please try again.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+}
+
     var showVideoOptions by remember { mutableStateOf(false) }
     var selectedVideoUri by remember {
         mutableStateOf<android.net.Uri?>(null)
@@ -143,15 +313,17 @@ fun AutoReelHomeScreen() {
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
+
     if (uri != null) {
-    if (
-        isValidVideoFile(context, uri) &&
-        isVideoWithinOneMinute(context, uri)
-    ) {
-        selectedVideoUri = uri
-    } else {
-        selectedVideoUri = null
-    }
+
+        if (
+            isValidVideoFile(context, uri) &&
+            isVideoWithinOneMinute(context, uri)
+        ) {
+            startVideoImport(uri)
+        } else {
+            selectedVideoUri = null
+        }
     }
     }
 
@@ -159,23 +331,31 @@ fun AutoReelHomeScreen() {
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val uri = result.data?.data
 
-            if (uri != null) {
-    if (
-        isValidVideoFile(context, uri) &&
-        isVideoWithinOneMinute(context, uri)
-    ) {
-        selectedVideoUri = uri
-    } else {
-        selectedVideoUri = null
-    }
-} else {
-    selectedVideoUri = null
-            }
+    val uri = result.data?.data
+
+    if (uri != null) {
+
+        if (
+            isValidVideoFile(context, uri) &&
+            isVideoWithinOneMinute(context, uri)
+        ) {
+            startVideoImport(uri)
+        } else {
+            selectedVideoUri = null
         }
-    }
 
+    } else {
+
+        selectedVideoUri = null
+
+        Toast.makeText(
+            context,
+            "Unable to get recorded video",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+        }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -183,7 +363,46 @@ fun AutoReelHomeScreen() {
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
+if (isImporting) {
 
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = CardBackground,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Text(
+                text = "Importing Your Video...",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LinearProgressIndicator(
+                progress = importProgress / 100f,
+                modifier = Modifier.fillMaxWidth(),
+                color = Purple,
+                trackColor = Color.DarkGray
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "$importProgress% Completed",
+                color = LightPurple,
+                fontSize = 13.sp
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(20.dp))
+}
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
