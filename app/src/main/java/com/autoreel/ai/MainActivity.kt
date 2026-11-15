@@ -331,8 +331,10 @@ fun AutoReelHomeScreen() {
                             showVideoOptions = false
 
                             galleryLauncher.launch(
-                                ActivityResultContracts.PickVisualMedia.VideoOnly
-                            )
+                               PickVisualMediaRequest(
+                                  ActivityResultContracts.PickVisualMedia.VideoOnly
+    )
+)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
