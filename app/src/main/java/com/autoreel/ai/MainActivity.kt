@@ -26,6 +26,63 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.result.PickVisualMediaRequest
+import android.content.Context
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.widget.Toast
+
+
+private fun isVideoWithinOneMinute(
+    context: Context,
+    uri: Uri
+): Boolean {
+
+    val retriever = MediaMetadataRetriever()
+
+    return try {
+        retriever.setDataSource(context, uri)
+
+        val duration = retriever.extractMetadata(
+            MediaMetadataRetriever.METADATA_KEY_DURATION
+        )?.toLongOrNull()
+
+        if (duration == null) {
+            Toast.makeText(
+                context,
+                "Unable to check video duration",
+                Toast.LENGTH_LONG
+            ).show()
+
+            false
+
+        } else if (duration > 60000) {
+
+            Toast.makeText(
+                context,
+                "Please select a video of 60 seconds or less",
+                Toast.LENGTH_LONG
+            ).show()
+
+            false
+
+        } else {
+            true
+        }
+
+    } catch (e: Exception) {
+
+        Toast.makeText(
+            context,
+            "Unable to read this video",
+            Toast.LENGTH_LONG
+        ).show()
+
+        false
+
+    } finally {
+        retriever.release()
+    }
+}
 
 private val DarkBackground = Color(0xFF101018)
 private val CardBackground = Color(0xFF1D1D2B)
@@ -66,9 +123,13 @@ fun AutoReelHomeScreen() {
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
+    if (uri != null) {
+        if (isVideoWithinOneMinute(context, uri)) {
             selectedVideoUri = uri
+        } else {
+            selectedVideoUri = null
         }
+    }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -78,9 +139,13 @@ fun AutoReelHomeScreen() {
             val uri = result.data?.data
 
             if (uri != null) {
-                selectedVideoUri = uri
-            } else {
-                selectedVideoUri = null
+    if (isVideoWithinOneMinute(context, uri)) {
+        selectedVideoUri = uri
+    } else {
+        selectedVideoUri = null
+    }
+} else {
+    selectedVideoUri = null
             }
         }
     }
