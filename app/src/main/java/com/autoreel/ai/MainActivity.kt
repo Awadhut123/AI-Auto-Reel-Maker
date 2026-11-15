@@ -30,7 +30,27 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.widget.Toast
+import android.content.ContentResolver
 
+private fun isValidVideoFile(
+    context: Context,
+    uri: Uri
+): Boolean {
+
+    val mimeType = context.contentResolver.getType(uri)
+
+    if (mimeType == null || !mimeType.startsWith("video/")) {
+        Toast.makeText(
+            context,
+            "Please select a valid video file",
+            Toast.LENGTH_LONG
+        ).show()
+
+        return false
+    }
+
+    return true
+}
 
 private fun isVideoWithinOneMinute(
     context: Context,
@@ -124,11 +144,14 @@ fun AutoReelHomeScreen() {
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
     if (uri != null) {
-        if (isVideoWithinOneMinute(context, uri)) {
-            selectedVideoUri = uri
-        } else {
-            selectedVideoUri = null
-        }
+    if (
+        isValidVideoFile(context, uri) &&
+        isVideoWithinOneMinute(context, uri)
+    ) {
+        selectedVideoUri = uri
+    } else {
+        selectedVideoUri = null
+    }
     }
     }
 
@@ -139,7 +162,10 @@ fun AutoReelHomeScreen() {
             val uri = result.data?.data
 
             if (uri != null) {
-    if (isVideoWithinOneMinute(context, uri)) {
+    if (
+        isValidVideoFile(context, uri) &&
+        isVideoWithinOneMinute(context, uri)
+    ) {
         selectedVideoUri = uri
     } else {
         selectedVideoUri = null
