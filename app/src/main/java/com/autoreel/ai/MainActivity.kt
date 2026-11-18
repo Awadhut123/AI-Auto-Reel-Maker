@@ -246,7 +246,6 @@ class MainActivity : ComponentActivity() {
 fun AutoReelHomeScreen() {
 
     val context = LocalContext.current
-
     val coroutineScope = rememberCoroutineScope()
 
     var isImporting by remember {
@@ -265,6 +264,10 @@ fun AutoReelHomeScreen() {
         mutableStateOf(false)
     }
 
+    var showVideoEditor by remember {
+        mutableStateOf(false)
+    }
+
     var selectedVideoUri by remember {
         mutableStateOf<Uri?>(null)
     }
@@ -277,6 +280,7 @@ fun AutoReelHomeScreen() {
             importProgress = 0
             importedVideoFile = null
             selectedVideoUri = null
+            showVideoEditor = false
 
             val file = importVideoToCache(
                 context,
@@ -369,271 +373,328 @@ fun AutoReelHomeScreen() {
             .padding(20.dp)
     ) {
 
-        if (isImporting) {
+        if (showVideoEditor && importedVideoFile != null) {
 
-            Surface(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                color = CardBackground,
-                shape = RoundedCornerShape(16.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                TextButton(
+                    onClick = {
+                        showVideoEditor = false
+                    }
+                ) {
+                    Text(
+                        text = "← Back to Home",
+                        color = LightPurple
+                    )
+                }
+            }
+
+            VideoEditorScreen(
+                videoFile = importedVideoFile!!,
+                onExportCompleted = { exportedFile ->
+
+                    importedVideoFile = exportedFile
+                    selectedVideoUri = Uri.fromFile(exportedFile)
+                    showVideoEditor = false
+
+                    Toast.makeText(
+                        context,
+                        "Export completed! File is in app cache.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            )
+
+        } else {
+
+            if (isImporting) {
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = CardBackground,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
 
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+
+                        Text(
+                            text = "Importing Your Video...",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        LinearProgressIndicator(
+                            progress = {
+                                importProgress / 100f
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Purple,
+                            trackColor = Color.DarkGray
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "$importProgress% Completed",
+                            color = LightPurple,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+
+                Column {
+
                     Text(
-                        text = "Importing Your Video...",
+                        text = "AutoReel AI",
                         color = Color.White,
-                        fontSize = 16.sp,
+                        fontSize = 25.sp,
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    LinearProgressIndicator(
-                        progress = importProgress / 100f,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Purple,
-                        trackColor = Color.DarkGray
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     Text(
-                        text = "$importProgress% Completed",
-                        color = LightPurple,
-                        fontSize = 13.sp
+                        text = "Create amazing reels with AI",
+                        color = Color.LightGray,
+                        fontSize = 12.sp
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-
-            Column {
 
                 Text(
-                    text = "AutoReel AI",
-                    color = Color.White,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = "Create amazing reels with AI",
-                    color = Color.LightGray,
-                    fontSize = 12.sp
-                )
-            }
-
-            Text(
-                text = "✦ AI",
-                color = LightPurple,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF542A9E),
-                            Color(0xFF25204A),
-                            Color(0xFF17172B)
-                        )
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .padding(22.dp)
-        ) {
-
-            Column {
-
-                Text(
-                    text = "YOUR VIDEO,",
-                    color = Color.White,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = "YOUR NEXT REEL ✨",
+                    text = "✦ AI",
                     color = LightPurple,
-                    fontSize = 25.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = "Turn ordinary videos into amazing reels.",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 13.sp
-                )
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                Button(
-                    onClick = {
-                        showVideoOptions = true
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Purple
-                    ),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-
-                    Text(
-                        text = "+  Create New Reel",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 5.dp)
-                    )
-                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-        if (selectedVideoUri != null) {
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = CardBackground,
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Purple)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF542A9E),
+                                Color(0xFF25204A),
+                                Color(0xFF17172B)
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .padding(22.dp)
             ) {
 
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
+                Column {
 
                     Text(
-                        text = "✓ Video Selected",
-                        color = LightPurple,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        text = "YOUR VIDEO,",
+                        color = Color.White,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "YOUR NEXT REEL ✨",
+                        color = LightPurple,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Your video is ready for the next step.",
-                        color = Color.LightGray,
+                        text = "Turn ordinary videos into amazing reels.",
+                        color = Color.White.copy(alpha = 0.85f),
                         fontSize = 13.sp
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                    OutlinedButton(
+                    Button(
                         onClick = {
                             showVideoOptions = true
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isImporting,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Purple
+                        ),
+                        shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("Choose Another Video")
+
+                        Text(
+                            text = "+  Create New Reel",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(vertical = 5.dp)
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-        }
 
-        Text(
-            text = "Choose a Style",
-            color = Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
+            if (selectedVideoUri != null) {
 
-        Spacer(modifier = Modifier.height(14.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = CardBackground,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Purple)
+                ) {
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
 
-            TemplateCard("🔥", "Trending", Modifier.weight(1f))
-            TemplateCard("🎬", "Cinematic", Modifier.weight(1f))
-        }
+                        Text(
+                            text = "✓ Video Selected",
+                            color = LightPurple,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
 
-        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+                        Text(
+                            text = "Your video is ready for editing.",
+                            color = Color.LightGray,
+                            fontSize = 13.sp
+                        )
 
-            TemplateCard("✨", "Aesthetic", Modifier.weight(1f))
-            TemplateCard("⚡", "Fast Beat", Modifier.weight(1f))
-        }
+                        Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(28.dp))
+                        Button(
+                            onClick = {
+                                showVideoEditor = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = importedVideoFile != null,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Purple
+                            )
+                        ) {
+                            Text("Open Video Editor")
+                        }
 
-        Text(
-            text = "My Reels",
-            color = Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
+                        Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = {
+                                showVideoOptions = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Choose Another Video")
+                        }
+                    }
+                }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = CardBackground,
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, Color(0xFF343448))
-        ) {
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Text(
+                text = "Choose a Style",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
 
-                Text(
-                    text = "🎥",
-                    fontSize = 32.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "No reels created yet",
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = "Your finished videos will appear here.",
-                    color = Color.LightGray,
-                    fontSize = 12.sp
-                )
+                TemplateCard("🔥", "Trending", Modifier.weight(1f))
+                TemplateCard("🎬", "Cinematic", Modifier.weight(1f))
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+
+                TemplateCard("✨", "Aesthetic", Modifier.weight(1f))
+                TemplateCard("⚡", "Fast Beat", Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = "My Reels",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = CardBackground,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFF343448))
+            ) {
+
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Text(
+                        text = "🎥",
+                        fontSize = 32.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "No reels created yet",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Text(
+                        text = "Your finished videos will appear here.",
+                        color = Color.LightGray,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Made with AutoReel AI ✦",
+                color = Color.Gray,
+                fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Made with AutoReel AI ✦",
-            color = Color.Gray,
-            fontSize = 11.sp,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
     }
 
     if (showVideoOptions) {
@@ -704,6 +765,12 @@ fun AutoReelHomeScreen() {
                                 ) != null
                             ) {
                                 cameraLauncher.launch(cameraIntent)
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "No camera app available",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
