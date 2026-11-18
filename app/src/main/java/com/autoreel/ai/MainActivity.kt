@@ -2,12 +2,18 @@
 package com.autoreel.ai
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -25,17 +31,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.activity.result.PickVisualMediaRequest
-import android.content.Context
-import android.media.MediaMetadataRetriever
-import android.net.Uri
-import android.widget.Toast
-import android.content.ContentResolver
-import android.provider.OpenableColumns
 import java.io.File
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private fun isValidVideoFile(
     context: Context,
@@ -56,7 +55,6 @@ private fun isValidVideoFile(
 
     return true
 }
-
 
 private suspend fun importVideoToCache(
     context: Context,
@@ -164,7 +162,6 @@ private suspend fun importVideoToCache(
     }
 }
 
-
 private fun isVideoWithinOneMinute(
     context: Context,
     uri: Uri
@@ -180,6 +177,7 @@ private fun isVideoWithinOneMinute(
         )?.toLongOrNull()
 
         if (duration == null) {
+
             Toast.makeText(
                 context,
                 "Unable to check video duration",
@@ -223,6 +221,7 @@ private val Purple = Color(0xFF9B6DFF)
 private val LightPurple = Color(0xFFC5A8FF)
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -248,136 +247,120 @@ fun AutoReelHomeScreen() {
 
     val context = LocalContext.current
 
-  val coroutineScope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
 
-var isImporting by remember {
-    mutableStateOf(false)
-}
-
-var importProgress by remember {
-    mutableIntStateOf(0)
-}
-
-var importedVideoFile by remember {
-    mutableStateOf<File?>(null)
-}
-
-var showVideoOptions by remember {
-    mutableStateOf(false)
-}
-
-var selectedVideoUri by remember {
-    mutableStateOf<Uri?>(null)
-}
-
-  val coroutineScope = rememberCoroutineScope()
-
-var isImporting by remember {
-    mutableStateOf(false)
-}
-
-var importProgress by remember {
-    mutableIntStateOf(0)
-}
-
-var importedVideoFile by remember {
-    mutableStateOf<File?>(null)
-}
-
-  
-    var selectedVideoUri by remember {
-        mutableStateOf<android.net.Uri?>(null)
+    var isImporting by remember {
+        mutableStateOf(false)
     }
+
+    var importProgress by remember {
+        mutableIntStateOf(0)
+    }
+
+    var importedVideoFile by remember {
+        mutableStateOf<File?>(null)
+    }
+
+    var showVideoOptions by remember {
+        mutableStateOf(false)
+    }
+
+    var selectedVideoUri by remember {
+        mutableStateOf<Uri?>(null)
+    }
+
     fun startVideoImport(uri: Uri) {
 
-    coroutineScope.launch {
+        coroutineScope.launch {
 
-        isImporting = true
-        importProgress = 0
-        importedVideoFile = null
-        selectedVideoUri = null
-
-        val file = importVideoToCache(
-            context,
-            uri
-        ) { progress ->
-
-            importProgress = progress
-        }
-
-        isImporting = false
-
-        if (file != null) {
-
-            importedVideoFile = file
-            selectedVideoUri = uri
-
-            Toast.makeText(
-                context,
-                "Video imported successfully!",
-                Toast.LENGTH_SHORT
-            ).show()
-
-        } else {
-
+            isImporting = true
+            importProgress = 0
+            importedVideoFile = null
             selectedVideoUri = null
 
-            Toast.makeText(
+            val file = importVideoToCache(
                 context,
-                "Video import failed. Please try again.",
-                Toast.LENGTH_LONG
-            ).show()
+                uri
+            ) { progress ->
+
+                importProgress = progress
+            }
+
+            isImporting = false
+
+            if (file != null) {
+
+                importedVideoFile = file
+                selectedVideoUri = uri
+
+                Toast.makeText(
+                    context,
+                    "Video imported successfully!",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+            } else {
+
+                selectedVideoUri = null
+
+                Toast.makeText(
+                    context,
+                    "Video import failed. Please try again.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
-    }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
 
-    if (uri != null) {
+        if (uri != null) {
 
-        if (
-            isValidVideoFile(context, uri) &&
-            isVideoWithinOneMinute(context, uri)
-        ) {
-            startVideoImport(uri)
-        } else {
-            selectedVideoUri = null
+            if (
+                isValidVideoFile(context, uri) &&
+                isVideoWithinOneMinute(context, uri)
+            ) {
+                startVideoImport(uri)
+            } else {
+                selectedVideoUri = null
+            }
         }
-    }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+
         if (result.resultCode == Activity.RESULT_OK) {
 
-    val uri = result.data?.data
+            val uri = result.data?.data
 
-    if (uri != null) {
+            if (uri != null) {
 
-        if (
-            isValidVideoFile(context, uri) &&
-            isVideoWithinOneMinute(context, uri)
-        ) {
-            startVideoImport(uri)
-        } else {
-            selectedVideoUri = null
+                if (
+                    isValidVideoFile(context, uri) &&
+                    isVideoWithinOneMinute(context, uri)
+                ) {
+                    startVideoImport(uri)
+                } else {
+                    selectedVideoUri = null
+                }
+
+            } else {
+
+                selectedVideoUri = null
+
+                Toast.makeText(
+                    context,
+                    "Unable to get recorded video",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
-
-    } else {
-
-        selectedVideoUri = null
-
-        Toast.makeText(
-            context,
-            "Unable to get recorded video",
-            Toast.LENGTH_LONG
-        ).show()
     }
-        }
-    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -385,52 +368,56 @@ var importedVideoFile by remember {
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-if (isImporting) {
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = CardBackground,
-        shape = RoundedCornerShape(16.dp)
-    ) {
+        if (isImporting) {
 
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-
-            Text(
-                text = "Importing Your Video...",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LinearProgressIndicator(
-                progress = importProgress / 100f,
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Purple,
-                trackColor = Color.DarkGray
-            )
+                color = CardBackground,
+                shape = RoundedCornerShape(16.dp)
+            ) {
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
 
-            Text(
-                text = "$importProgress% Completed",
-                color = LightPurple,
-                fontSize = 13.sp
-            )
+                    Text(
+                        text = "Importing Your Video...",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LinearProgressIndicator(
+                        progress = importProgress / 100f,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Purple,
+                        trackColor = Color.DarkGray
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "$importProgress% Completed",
+                        color = LightPurple,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
         }
-    }
 
-    Spacer(modifier = Modifier.height(20.dp))
-}
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+
             Column {
+
                 Text(
                     text = "AutoReel AI",
                     color = Color.White,
@@ -470,7 +457,9 @@ if (isImporting) {
                 )
                 .padding(22.dp)
         ) {
+
             Column {
+
                 Text(
                     text = "YOUR VIDEO,",
                     color = Color.White,
@@ -505,6 +494,7 @@ if (isImporting) {
                     ),
                     shape = RoundedCornerShape(14.dp)
                 ) {
+
                     Text(
                         text = "+  Create New Reel",
                         color = Color.White,
@@ -519,15 +509,18 @@ if (isImporting) {
         Spacer(modifier = Modifier.height(20.dp))
 
         if (selectedVideoUri != null) {
+
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = CardBackground,
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Purple)
             ) {
+
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
+
                     Text(
                         text = "✓ Video Selected",
                         color = LightPurple,
@@ -571,6 +564,7 @@ if (isImporting) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+
             TemplateCard("🔥", "Trending", Modifier.weight(1f))
             TemplateCard("🎬", "Cinematic", Modifier.weight(1f))
         }
@@ -581,6 +575,7 @@ if (isImporting) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+
             TemplateCard("✨", "Aesthetic", Modifier.weight(1f))
             TemplateCard("⚡", "Fast Beat", Modifier.weight(1f))
         }
@@ -602,11 +597,16 @@ if (isImporting) {
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, Color(0xFF343448))
         ) {
+
             Column(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(text = "🎥", fontSize = 32.sp)
+
+                Text(
+                    text = "🎥",
+                    fontSize = 32.sp
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -637,12 +637,14 @@ if (isImporting) {
     }
 
     if (showVideoOptions) {
+
         AlertDialog(
             onDismissRequest = {
                 showVideoOptions = false
             },
             containerColor = CardBackground,
             title = {
+
                 Text(
                     text = "Create New Reel",
                     color = Color.White,
@@ -650,7 +652,9 @@ if (isImporting) {
                 )
             },
             text = {
+
                 Column {
+
                     Text(
                         text = "Choose how you want to add your video.",
                         color = Color.LightGray
@@ -660,13 +664,14 @@ if (isImporting) {
 
                     Button(
                         onClick = {
+
                             showVideoOptions = false
 
                             galleryLauncher.launch(
-                               PickVisualMediaRequest(
-                                  ActivityResultContracts.PickVisualMedia.VideoOnly
-    )
-)
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.VideoOnly
+                                )
+                            )
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
@@ -680,18 +685,21 @@ if (isImporting) {
 
                     OutlinedButton(
                         onClick = {
+
                             showVideoOptions = false
 
                             val cameraIntent = Intent(
                                 MediaStore.ACTION_VIDEO_CAPTURE
                             ).apply {
+
                                 putExtra(
                                     MediaStore.EXTRA_DURATION_LIMIT,
                                     60
                                 )
                             }
 
-                            if (cameraIntent.resolveActivity(
+                            if (
+                                cameraIntent.resolveActivity(
                                     context.packageManager
                                 ) != null
                             ) {
@@ -700,6 +708,7 @@ if (isImporting) {
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+
                         Text(
                             text = "📷  Record Video",
                             color = LightPurple
@@ -708,6 +717,7 @@ if (isImporting) {
                 }
             },
             confirmButton = {
+
                 TextButton(
                     onClick = {
                         showVideoOptions = false
@@ -726,12 +736,14 @@ fun TemplateCard(
     title: String,
     modifier: Modifier = Modifier
 ) {
+
     Surface(
         modifier = modifier.height(105.dp),
         color = CardBackground,
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, Color(0xFF343448))
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -739,7 +751,11 @@ fun TemplateCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = emoji, fontSize = 27.sp)
+
+            Text(
+                text = emoji,
+                fontSize = 27.sp
+            )
 
             Spacer(modifier = Modifier.height(7.dp))
 
