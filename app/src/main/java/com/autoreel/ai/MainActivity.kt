@@ -36,7 +36,6 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import java.io.File
 
 private fun isValidVideoFile(
     context: Context,
@@ -262,7 +261,34 @@ var importProgress by remember {
 var importedVideoFile by remember {
     mutableStateOf<File?>(null)
 }
-fun startVideoImport(uri: Uri) {
+
+var showVideoOptions by remember {
+    mutableStateOf(false)
+}
+
+var selectedVideoUri by remember {
+    mutableStateOf<Uri?>(null)
+}
+
+  val coroutineScope = rememberCoroutineScope()
+
+var isImporting by remember {
+    mutableStateOf(false)
+}
+
+var importProgress by remember {
+    mutableIntStateOf(0)
+}
+
+var importedVideoFile by remember {
+    mutableStateOf<File?>(null)
+}
+
+  
+    var selectedVideoUri by remember {
+        mutableStateOf<android.net.Uri?>(null)
+    }
+    fun startVideoImport(uri: Uri) {
 
     coroutineScope.launch {
 
@@ -303,11 +329,6 @@ fun startVideoImport(uri: Uri) {
             ).show()
         }
     }
-}
-
-    var showVideoOptions by remember { mutableStateOf(false) }
-    var selectedVideoUri by remember {
-        mutableStateOf<android.net.Uri?>(null)
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -356,6 +377,7 @@ fun startVideoImport(uri: Uri) {
         ).show()
     }
         }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
